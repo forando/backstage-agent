@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "files": ["./functions/common/helpers.d.ts"]
+}

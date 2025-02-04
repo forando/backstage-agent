@@ -1,4 +1,4 @@
-import {Fn, Stack} from 'aws-cdk-lib'
+import { Stack } from 'aws-cdk-lib'
 import { defineBackend } from '@aws-amplify/backend'
 import {
     data,

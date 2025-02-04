@@ -1,4 +1,4 @@
-import {CfnOutput, CustomResource, RemovalPolicy, Stack} from 'aws-cdk-lib'
+import { CustomResource, RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import { bedrock } from '@cdklabs/generative-ai-cdk-constructs'
 import * as s3 from 'aws-cdk-lib/aws-s3'
@@ -122,8 +122,6 @@ export class BedrockAgentAlias extends Stack {
             },
         })
 
-        new CfnOutput(this, "AgentAliasId", {
-            value: customResourceResult.getAtt('aliasId').toString(),
-        })
+        this.node.addDependency(props.agentAliasCrFn)
     }
 }

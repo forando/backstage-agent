@@ -2,6 +2,10 @@
 
 This agent provides an interactive communication channel to query an analyze documentation stored in [Backstage](https://backstage.io).
 
+
+![Architecture](img/bedrock.png "Backstage AI Agent Architecture")
+
+
 ## Installation
 
 ### Pre-requisites

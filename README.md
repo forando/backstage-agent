@@ -5,10 +5,10 @@ This agent provides an interactive communication channel to query an analyze doc
 
 ![Architecture](img/bedrock.png "Backstage AI Agent Architecture")
 
-1. For each document entry in Backstage s3 bucket there is a correspondent `search_index.json` that contains all document data.
-The data in `search_index.json` is split in chunks (one per subheading). __Content Creator__ function reads each such
-a file and assembles those chunks together. It also adds to it backstage links that point to the correspondent chucks of text. 
-The resulted documents are stored in Bedrock S3 bucket.
+1. For each document entry in `Backstage s3 bucket` there is a correspondent `search_index.json` that contains all document data.
+The data in `search_index.json` is split in chunks (one per subheading). __Content Creator__ function reads the
+file and assembles those chunks together. It also adds backstage links that point to the correspondent subheadings. 
+The resulted document is stored in `Bedrock S3 bucket`.
 2. Bedrock has an option to build a `Knowledge Base` from the documents. The build process works as follows:
     - The `Knowledge Base agent` takes a document form the s3 bucket and pipes it thorough `amazon.titan-embed-text-v1` model to generate a vector representation of the document text.
     - The `Knowledge Base agent` then stores this vector together with the document text in OpenSearch as `inverted index` for the later use.
@@ -17,7 +17,7 @@ The resulted documents are stored in Bedrock S3 bucket.
     - The `Bedrock Agent` pipes the query through `amazon.titan-embed-text-v1` model to generate a vector representation of the query.
     - The `Bedrock Agent` then sends this vector to OpenSearch to find the most similar documents.
     - The found documents and the query are piped through `anthropic.claude-3-5-sonnet-20240620-v1:0` to get an answer.
-    - The `Bedrock Agent` has a set of preconfigured actions that it can perform by invoking __Action Performer__ lambda function. For example, it can check that the Backstage links to the documentation are not broken before returning them to the user.
+    - The `Bedrock Agent` has a set of preconfigured actions that it can perform by invoking __Action Performer__ lambda function. For example, it can check that Backstage links are not broken before returning them to the user.
 
 __Question:__ why to assemble all chunks from `search_index.json` together?
 

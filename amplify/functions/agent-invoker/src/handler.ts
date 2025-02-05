@@ -7,15 +7,8 @@ import {
     ResponseStream,
 } from '@aws-sdk/client-bedrock-agent-runtime'
 
-import {
-    BedrockAgentClient,
-    ListAgentAliasesCommand,
-    ListAgentAliasesCommandInput,
-} from '@aws-sdk/client-bedrock-agent'
-
 // initialize bedrock runtime client
 const runtimeClient = new BedrockAgentRuntimeClient()
-const bedrockClient = new BedrockAgentClient()
 
 export const handler: Schema["invokeAgent"]["functionHandler"] = async (event: any) => {
 
@@ -23,16 +16,8 @@ export const handler: Schema["invokeAgent"]["functionHandler"] = async (event: a
         throw new Error('AGENT_ID environment variable is not set')
     }
 
-    const listInput: ListAgentAliasesCommandInput = {
-        agentId: process.env.AGENT_ID,
-        maxResults: 100
-    }
-
-    const listResponse = await bedrockClient.send(new ListAgentAliasesCommand(listInput))
-
-    const aliasSummary = listResponse.agentAliasSummaries?.find(alias => alias.agentAliasName === 'test')
-    if(!aliasSummary) {
-        throw new Error('Agent alias not found')
+    if(!process.env.AGENT_ALIAS_ID) {
+        throw new Error('AGENT_ALIAS_ID environment variable is not set')
     }
 
     // User prompt
@@ -42,7 +27,7 @@ export const handler: Schema["invokeAgent"]["functionHandler"] = async (event: a
 
     const params: InvokeAgentCommandInput = {
         agentId: process.env.AGENT_ID,
-        agentAliasId: aliasSummary.agentAliasId,
+        agentAliasId: process.env.AGENT_ALIAS_ID,
         sessionId,
         memoryId,
         inputText: prompt

@@ -8,6 +8,7 @@ import {nameFor} from '../../utils'
 const FUNCTION_NAME = 'agentInvoker'
 
 export const agentInvoker = defineFunction({
+    name: FUNCTION_NAME,
     entry: "./src/handler.ts",
     timeoutSeconds: 30,
 })
@@ -44,7 +45,9 @@ export const configureInvokeAgentFn = (scope: Construct, agentArn: string, agent
 
 export const configureEnvsForInvokeAgentFn = (
     lambda: CfnFunction,
-    agentId: string
+    agentId: string,
+    agentAliasId: string,
 ) => {
     lambda.addPropertyOverride('Environment.Variables.AGENT_ID', agentId)
+    lambda.addPropertyOverride('Environment.Variables.AGENT_ALIAS_ID', agentAliasId)
 }

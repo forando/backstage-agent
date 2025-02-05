@@ -1,30 +1,33 @@
-import { CustomResource, RemovalPolicy, Stack } from 'aws-cdk-lib'
+import { RemovalPolicy } from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import { bedrock } from '@cdklabs/generative-ai-cdk-constructs'
-import * as s3 from 'aws-cdk-lib/aws-s3'
-import { Role, PolicyStatement, ServicePrincipal, Policy } from 'aws-cdk-lib/aws-iam'
+import { Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3'
 import { BedrockFoundationModel } from '@cdklabs/generative-ai-cdk-constructs/lib/cdk-lib/bedrock/models'
-import { IAgent, IKnowledgeBase } from '@cdklabs/generative-ai-cdk-constructs/lib/cdk-lib/bedrock'
-import { nameFor } from '../utils'
+import {IAgent, IKnowledgeBase} from '@cdklabs/generative-ai-cdk-constructs/lib/cdk-lib/bedrock'
 import { IBucket } from 'aws-cdk-lib/aws-s3'
 import { IFunction } from 'aws-cdk-lib/aws-lambda'
-import {Provider} from 'aws-cdk-lib/custom-resources'
+import { nameFor } from '../utils'
 
 const BUCKET_NAME = 'backstage-knowledge-base'
 
-export type BedrockAgentAliasProps = {
-    agentId: string
-    agentAliasCrFn: IFunction
+export type BedrockAIProps = {
+    actionPerformerFn: IFunction
 }
 
-export class BedrockAI extends Stack {
-    readonly agent: IAgent
+type BedrockAgentProps = {
+    actionPerformerFn: IFunction
+    knowledgeBase: IKnowledgeBase
+}
+
+export class BedrockAI extends Construct {
     readonly bucket: IBucket
+    readonly agent: IAgent
     readonly knowledgeBase: IKnowledgeBase
-    constructor(scope: Construct, id: string) {
+    readonly agentAliasId: string
+    constructor(scope: Construct, id: string, props: BedrockAIProps) {
         super(scope, id);
 
-        const bucket = new s3.Bucket(this, 'knowledgeBucket', {
+        const bucket = new Bucket(this, 'knowledgeBucket', {
             bucketName: nameFor(BUCKET_NAME),
             blockPublicAccess: {
                 blockPublicAcls: true,
@@ -32,7 +35,7 @@ export class BedrockAI extends Stack {
                 ignorePublicAcls: true,
                 restrictPublicBuckets: true,
             },
-            encryption: s3.BucketEncryption.S3_MANAGED,
+            encryption: BucketEncryption.S3_MANAGED,
             enforceSSL: true,
             removalPolicy: RemovalPolicy.DESTROY,
             autoDeleteObjects: true,
@@ -51,77 +54,75 @@ export class BedrockAI extends Stack {
             chunkingStrategy: bedrock.ChunkingStrategy.FIXED_SIZE,
         })
 
-        const agent = new bedrock.Agent(this, 'BackstageAgent', {
-            name: 'backstage-agent',
-            instruction: 'Whenever you get the information from knowledge, search the closest `Backstage link` in the result and provide it back to the user at the end of your response.\n' +
-                'Write it like: `here is the Backstage link where you can read about it: <the_link>`\n' +
-                'Whenever user is asking you about a documentation or a link or where he can read about the topic in question, search the knowledge base and provide the aforementioned `Backstage link` located close to the answer.',
-            foundationModel: BedrockFoundationModel.ANTHROPIC_CLAUDE_3_5_SONNET_V1_0,
-            knowledgeBases: [knowledgeBase],
-            shouldPrepareAgent: true,
-            codeInterpreterEnabled: true,
+        const agentConstruct = new BedrockAgent(this, 'agent', {
+            actionPerformerFn: props.actionPerformerFn,
+            knowledgeBase
         })
 
-        const agentRole = new Role(this, 'BedrockAgentRole', {
-            assumedBy: new ServicePrincipal('bedrock.amazonaws.com'),
-            description: 'Role for Bedrock Agent to access the Knowledge Base'
+        const alias = new bedrock.AgentAlias(this, 'agentAlias', {
+            agent: agentConstruct.agent,
+            aliasName: `test-${Date.now()}`
         })
 
-        agentRole.assumeRolePolicy?.addStatements(new PolicyStatement({
-            actions: ['sts:AssumeRole'],
-            principals: [new ServicePrincipal('bedrock.amazonaws.com')]
-        }))
-
-        const knowledgeBasePermission = new PolicyStatement({
-            sid: "AllowStartIngestionJob",
-            actions: ['bedrock:Retrieve'],
-            resources: [knowledgeBase.knowledgeBaseArn]
-        })
-
-        const modelPermission = new PolicyStatement({
-            sid: "AllowInvokeModel",
-            actions: ['bedrock:InvokeModel'],
-            resources: [BedrockFoundationModel.ANTHROPIC_CLAUDE_3_5_SONNET_V1_0.modelArn]
-        })
-
-        const codeInterpreterPermission = new PolicyStatement({
-            sid: "AllowInvokeCodeInterpreter",
-            actions: ['bedrock:InvokeCodeInterpreter', 'bedrock:ExecuteCode'],
-            resources: ['*']
-        })
-
-        const agentPolicy: Policy = new Policy(this, 'BedrockAgentPolicy', {
-            statements: [knowledgeBasePermission, modelPermission, codeInterpreterPermission],
-        })
-
-        agentRole.attachInlinePolicy(agentPolicy)
-
-        this.agent = agent
         this.bucket = bucket
+        this.agent = agentConstruct.agent
         this.knowledgeBase = knowledgeBase
+        this.agentAliasId = alias.aliasId
     }
 }
 
-/**
- * The native CDK api tries to create an alias every time it runs.
- * This results in `alias already exists` error.
- * To avoid this, we are creating a custom resource to create an alias.
- */
-export class BedrockAgentAlias extends Stack {
-    constructor(scope: Construct, id: string, props: BedrockAgentAliasProps) {
+class BedrockAgent extends Construct {
+    readonly agent: IAgent
+    constructor(scope: Construct, id: string, props: BedrockAgentProps) {
         super(scope, id);
-        const customResourceProvider = new Provider(this, "AgentAliasCrProvider", {
-            onEventHandler: props.agentAliasCrFn,
+
+        const actionGroup = new bedrock.AgentActionGroup({
+            name: 'backstage-action-group',
+            description: 'Action group for Backstage',
+            enabled: true,
+            forceDelete: true,
+            executor: bedrock.ActionGroupExecutor.fromlambdaFunction(props.actionPerformerFn),
+            functionSchema: {
+                functions: [
+                    {
+                        name: 'checkBackstageLinkIsValid',
+                        description: 'Checks if a backstage link is valid. Returns `true` if the link is valid, `false` otherwise. Return to the user only valid links.',
+                        parameters: {
+                            link: {
+                                description: 'Backstage link',
+                                required: true,
+                                type: 'string'
+                            }
+                        }
+                    },
+                    {
+                        name: 'createGithubApp',
+                        description: 'Initializes a GitHub app creation by generating a GitHub issue. Returns a template json that user can use to make a request to the Engineering Experience Team.',
+                        parameters: {
+                            teamName: {
+                                description: 'team name',
+                                required: true,
+                                type: 'string'
+                            }
+                        }
+                    }
+                ]
+            }
         })
 
-        const customResourceResult = new CustomResource(this, "AgentAliasCr", {
-            serviceToken: customResourceProvider.serviceToken,
-            properties: {
-                agentId: props.agentId,
-                aliasName: 'test'
-            },
+        this.agent = new bedrock.Agent(this, 'BackstageAgent', {
+            name: 'backstage-agent',
+            instruction: 'Whenever you get the information from knowledge, search the closest `Backstage link` in the result, check if the link is valid and provide it back to the user at the end of your response.\n' +
+                'Write it like: `here is the Backstage link where you can read about it: <the_link>`\n' +
+                'If the link is not valid, do not include it in the final response, but try to search another one that is valid.\n' +
+                'Whenever user is asking you about a documentation or a link or where he can read about the topic in question, search the knowledge base and provide the aforementioned `Backstage link` and do the validation procedure.\n' +
+                'If user wants to create a GitHub robot user or asks about GitHub PAT or GitHub App, create a GitHub App for him and provide the necessary information back to the user.\n',
+            foundationModel: BedrockFoundationModel.ANTHROPIC_CLAUDE_3_5_SONNET_V1_0,
+            knowledgeBases: [props.knowledgeBase],
+            actionGroups: [actionGroup],
+            shouldPrepareAgent: true,
+            userInputEnabled: true,
+            codeInterpreterEnabled: true,
         })
-
-        this.node.addDependency(props.agentAliasCrFn)
     }
 }

@@ -5,8 +5,9 @@ import {
     CardContent,
     Typography,
 } from "@mui/material";
-import { useEffect, useRef } from "react";
-import PropTypes from "prop-types";
+import { useEffect, useRef } from 'react'
+import PropTypes from 'prop-types'
+import Linkify from 'linkify-react'
 
 export type ChatHistory = {
     question: string;
@@ -64,7 +65,9 @@ const Chat = (props: ChatProps) => {
                                 sx={{ bgcolor: "text.secondary", color: "white", width: "65%" }}
                             >
                                 <CardContent>
-                                    <Typography>{msg.response}</Typography>
+                                    <Typography>
+                                        <Linkify>{msg.response}</Linkify>
+                                    </Typography>
                                     <Typography variant="caption">
                                         {msg.citation ? msg.citation : ""}
                                     </Typography>

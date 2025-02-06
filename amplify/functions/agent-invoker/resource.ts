@@ -10,7 +10,7 @@ const FUNCTION_NAME = 'agentInvoker'
 export const agentInvoker = defineFunction({
     name: FUNCTION_NAME,
     entry: "./src/handler.ts",
-    timeoutSeconds: 30,
+    timeoutSeconds: 60,
 })
 
 export const configureInvokeAgentFn = (scope: Construct, agentArn: string, agentId: string, cfn: CfnFunction, role?: IRole) => {

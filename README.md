@@ -9,7 +9,7 @@ This agent provides an interactive communication channel to query an analyze doc
 The data in `search_index.json` is split in chunks (one per subheading). __Content Creator__ function reads the
 file and assembles those chunks together. It also adds backstage links that point to the correspondent subheadings. 
 The resulted document is stored in `Bedrock S3 bucket`.
-2. Bedrock has an option to build a `Knowledge Base` from the documents. The build process works as follows:
+2. Bedrock has an option to build a `Knowledge Base` from the documents (which is essentially [RAG](https://aws.amazon.com/what-is/retrieval-augmented-generation/)). The build process works as follows:
     - The `Knowledge Base agent` takes a document form the s3 bucket and pipes it thorough `amazon.titan-embed-text-v1` model to generate a vector representation of the document text.
     - The `Knowledge Base agent` then stores this vector together with the document text in OpenSearch as `inverted index` for the later use.
 3. The `Bedrock Agent` is a middle man that processes user requests. The flow looks as follows:
@@ -24,6 +24,8 @@ __Question:__ why to assemble all chunks from `search_index.json` together?
 __Answer:__ this allows to store the document in the OpenSearch as a single entity. When a request comes in, OpenSearch 
 returns the whole document and not only parts of it. We then pipe entire document through `anthropic.claude-3-5-sonnet-20240620-v1:0` 
 model as a context that is used for the answer. This is useful when the user asks a question that spans multiple subheadings.
+
+`note:` Bedrock actually also splits the document into chunks, but it is configured to be much larger than the original subheadings.
 
 ## Installation
 

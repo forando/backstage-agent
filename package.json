@@ -42,6 +42,8 @@
     "@mui/icons-material": "^6.4.2",
     "@mui/material": "^6.4.2",
     "aws-amplify": "^6.12.2",
+    "linkify-react": "^4.2.0",
+    "linkifyjs": "^4.2.0",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",

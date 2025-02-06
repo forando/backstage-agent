@@ -6,6 +6,9 @@ import {
     InvokeAgentCommandInput, InvokeAgentCommandOutput,
     ResponseStream,
 } from '@aws-sdk/client-bedrock-agent-runtime'
+import {Logger} from '@aws-lambda-powertools/logger'
+
+const logger = new Logger({ serviceName: 'agentInvoker' })
 
 // initialize bedrock runtime client
 const runtimeClient = new BedrockAgentRuntimeClient()

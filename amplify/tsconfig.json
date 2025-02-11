@@ -10,7 +10,8 @@
     "skipLibCheck": true,
     "paths": {
       "$amplify/*": ["./../.amplify/generated/*"],
-      "$common/*": ["./functions/common/*"]
+      "$common/*": ["./functions/common/*"],
+      "$backend/*": ["./*"],
     }
   }
 }

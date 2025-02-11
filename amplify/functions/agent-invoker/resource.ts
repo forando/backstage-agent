@@ -10,7 +10,7 @@ const FUNCTION_NAME = 'agentInvoker'
 export const agentInvoker = defineFunction({
     name: FUNCTION_NAME,
     entry: "./src/handler.ts",
-    timeoutSeconds: 60,
+    timeoutSeconds: 60
 })
 
 export const configureInvokeAgentFn = (scope: Construct, agentArn: string, agentId: string, cfn: CfnFunction, role?: IRole) => {
@@ -50,4 +50,5 @@ export const configureEnvsForInvokeAgentFn = (
 ) => {
     lambda.addPropertyOverride('Environment.Variables.AGENT_ID', agentId)
     lambda.addPropertyOverride('Environment.Variables.AGENT_ALIAS_ID', agentAliasId)
+    lambda.addPropertyOverride('Environment.Variables.TABLE_NAME', 'someName')
 }

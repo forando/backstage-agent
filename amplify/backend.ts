@@ -1,13 +1,14 @@
 import { Stack } from 'aws-cdk-lib'
+import { AuthorizationType } from 'aws-cdk-lib/aws-appsync'
 import { defineBackend } from '@aws-amplify/backend'
+import {
+    CfnApiKey,
+} from 'aws-cdk-lib/aws-appsync'
+import { auth } from './auth/resource'
 import {
     data,
 } from './data/resource'
-import {
-    agentInvoker,
-    configureInvokeAgentFn,
-    configureEnvsForInvokeAgentFn
-} from './functions/agent-invoker/resource'
+import { createAppSyncEventApi } from './events/resource'
 import {
   contentCreator,
   configureContentCreatorFn,
@@ -22,33 +23,65 @@ import {
     agentActionPerformer,
     configureAgentActionPerformerFn
 } from './functions/action-performer/resource'
+import {
+    cdc,
+    configureCDCFn,
+    configureEnvsForCDCFn
+} from './functions/cdc/resource'
 import { BedrockAI } from './bedrock/resource'
 
 const backend = defineBackend({
-  data,
-  agentInvoker,
-  contentCreator,
-  knowledgeBaseIngestionJob,
-  agentActionPerformer,
+    auth,
+    data,
+    cdc,
+    contentCreator,
+    knowledgeBaseIngestionJob,
+    agentActionPerformer,
 })
 
-const agentInvokerFnResources = backend.agentInvoker.resources
+const cdcFnResources = backend.cdc.resources
+const authResources = backend.auth.resources
+const dataResources = backend.data.resources
 const contentCreatorFnResources = backend.contentCreator.resources
 const knowledgeBaseIngestionJobFnResources = backend.knowledgeBaseIngestionJob.resources
 const agentActionPerformerFnResources = backend.agentActionPerformer.resources
 
+const dataStack = Stack.of(dataResources.graphqlApi)
 const functionsStack = Stack.of(contentCreatorFnResources.lambda)
 
 const bedrock = new BedrockAI(functionsStack, 'bedrock', {
     actionPerformerFn: agentActionPerformerFnResources.lambda,
 })
 
-configureInvokeAgentFn(
-    functionsStack,
+dataResources.tables['AgentMessage'].grantReadWriteData(cdcFnResources.lambda)
+
+const api = createAppSyncEventApi(
+    dataStack,
+    'my-event-api',
+    authResources.userPool.userPoolId,
+    authResources.authenticatedUserIamRole
+)
+
+const apiKey = new CfnApiKey(dataStack, 'AppSyncApiKey', {
+    apiId: api.attrApiId,
+    description: 'API key for AppSync Event API',
+})
+
+configureCDCFn(
+    dataStack,
+    cdcFnResources,
     bedrock.agent.agentArn,
     bedrock.agent.agentId,
-    agentInvokerFnResources.cfnResources.cfnFunction,
-    agentInvokerFnResources.lambda.role
+    api.attrApiArn,
+    dataResources.tables['AgentMessage'].tableStreamArn,
+)
+
+configureEnvsForCDCFn(
+    cdcFnResources.cfnResources.cfnFunction,
+    bedrock.agent.agentId,
+    bedrock.agentAliasId,
+    `https://${api.getAtt('Dns.Http').toString()}/event`,
+    apiKey.attrApiKey
 )
 
 configureContentCreatorFn(
@@ -70,12 +103,6 @@ configureAgentActionPerformerFn(
     agentActionPerformerFnResources.cfnResources.cfnFunction
 )
 
-configureEnvsForInvokeAgentFn(
-    agentInvokerFnResources.cfnResources.cfnFunction,
-    bedrock.agent.agentId,
-    bedrock.agentAliasId
-)
-
 configureEnvsForContentCreatorFn(
     contentCreatorFnResources.cfnResources.cfnFunction,
     bedrock.bucket.bucketName
@@ -87,3 +114,12 @@ configureEnvsForKnowledgeBaseIngestionJobFn(
     bedrock.knowledgeBase.knowledgeBaseId
 )
 
+backend.addOutput({
+    custom: {
+        events: {
+            url: `https://${api.getAtt('Dns.Http').toString()}/event`,
+            aws_region: dataStack.region,
+            default_authorization_type: AuthorizationType.USER_POOL,
+        },
+    },
+})

@@ -8,19 +8,18 @@ import {
 import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
 import Linkify from 'linkify-react'
+import { type Schema } from '#/amplify/data/resource'
 
-export type ChatHistory = {
-    question: string;
-    response: string;
-    citation?: string;
-}
+type AgentMessage = Schema['AgentMessage']['type']
 
 export type ChatProps = {
-    history: ChatHistory[];
+    history: AgentMessage[];
 }
 
 const Chat = (props: ChatProps) => {
     const history = props.history;
+    //order history by id
+    const orderedHistory = history.sort((a, b) => a.id.localeCompare(b.id))
 
     const boxRef = useRef(null);
 
@@ -40,9 +39,10 @@ const Chat = (props: ChatProps) => {
                 maxHeight: "650px",
             }}
         >
-            {history?.length > 0 ? (
+            {orderedHistory?.length > 0 ? (
                 <Stack spacing={3}>
-                    {history?.map((msg) => (
+                    {/*sort history by id*/}
+                    {orderedHistory?.map((msg) => (
                         <Box sx={{ padding: "8px" }} key = {msg}>
                             <Box sx={{ paddingBottom: "8px" }}>
                                 <Card
@@ -59,20 +59,21 @@ const Chat = (props: ChatProps) => {
                                     </CardContent>
                                 </Card>
                             </Box>
-
-                            <Card
-                                raised
-                                sx={{ bgcolor: "text.secondary", color: "white", width: "65%" }}
-                            >
-                                <CardContent>
-                                    <Typography>
-                                        <Linkify>{msg.response}</Linkify>
-                                    </Typography>
-                                    <Typography variant="caption">
-                                        {msg.citation ? msg.citation : ""}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
+                            {msg.answer && (
+                                <Card
+                                    raised
+                                    sx={{ bgcolor: "text.secondary", color: "white", width: "65%" }}
+                                >
+                                    <CardContent>
+                                        <Typography>
+                                            <Linkify properties={{ target: '_blank' }}>{msg.answer}</Linkify>
+                                        </Typography>
+                                        <Typography variant="caption">
+                                            {msg.sessionId}
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            )}
                         </Box>
                     ))}
                 </Stack>

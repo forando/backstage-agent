@@ -1,18 +1,21 @@
-import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-import { agentInvoker } from '../functions/agent-invoker/resource';
+import { type ClientSchema, a, defineData } from '@aws-amplify/backend'
 
 
 const schema = a.schema({
-  AgentAnswer: a.customType({
+  AgentMessage: a.model({
+    id: a.id().required(),
+    sessionId: a.string().required(),
+    question: a.string().required(),
+    session: a.belongsTo('ChatSession', 'sessionId'),
     answer: a.string(),
     memoryId: a.string(),
-  }),
-  invokeAgent: a
-      .query()
-      .arguments({ prompt: a.string().required(), sessionId: a.string().required(), memoryId: a.string() })
-      .returns(a.ref("AgentAnswer"))
-      .authorization((allow) => [allow.publicApiKey()])
-      .handler(a.handler.function(agentInvoker)),
+  })
+      .authorization((allow) => [allow.authenticated()]),
+  ChatSession: a.model({
+    id: a.id().required(),
+    messages: a.hasMany('AgentMessage', 'sessionId')
+  })
+      .authorization((allow) => [allow.authenticated()]),
 })
 
 export type Schema = ClientSchema<typeof schema>;
@@ -20,9 +23,9 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: "apiKey",
-    apiKeyAuthorizationMode: {
+    defaultAuthorizationMode: 'userPool',
+    /*apiKeyAuthorizationMode: {
       expiresInDays: 30,
-    },
+    },*/
   },
 })

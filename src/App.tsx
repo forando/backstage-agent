@@ -2,7 +2,7 @@ import { type Schema } from '#/amplify/data/resource'
 import { generateClient } from 'aws-amplify/api'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { TextField, Typography } from '@mui/material'
 import Divider from '@mui/material/Divider'
 import Button from '@mui/material/Button'
@@ -16,34 +16,28 @@ import Chat from './Chat'
 import LoadingSpinner from './Spinner'
 
 import { events, type EventsChannel } from 'aws-amplify/data'
+import { AgentMessage } from '#/amplify/functions/common/message.ts'
 
 type AppSyncEvent = {
-    event: Schema["AgentMessage"]["type"]
+    event: AgentMessage
 }
-
 
 const client = generateClient<Schema>({authMode: 'userPool'})
 
-type Subscription = {
-    unsubscribe: () => void
-}
-
 export default function App() {
 
-    const [history, setHistory] = useState<Schema["AgentMessage"]["type"][]>([])
+    const [history, setHistory] = useState<AgentMessage[]>([])
     const [question, setQuestion] = useState('')
     const [spinner, setSpinner] = useState(false)
     const [sessionId, setSessionId] = useState(`session-${Date.now()}`)
-    const [memoryId, setMemoryId] = useState<string | null>(null)
-    const [subscription, setSubscription] = useState<Subscription | null>(null)
+    const sessionIdRef = useRef(sessionId)
+    const [memoryId, setMemoryId] = useState<string | undefined>(undefined)
 
     useEffect(() => {
-        const sub = client.models.AgentMessage.observeQuery().subscribe({
-            next: ({ items }) => {
-                const currentSessionMessages = items.filter((item) => item.sessionId === sessionId)
-                setHistory([...currentSessionMessages])
-            },
-        })
+        sessionIdRef.current = sessionId;
+    }, [sessionId])
+
+    useEffect(() => {
 
         let channel: EventsChannel
 
@@ -52,27 +46,29 @@ export default function App() {
 
             channel.subscribe({
                 next: async (data: AppSyncEvent) => {
-                    setSpinner(false)
                     console.log('received', data)
-                    const message = await client.models.AgentMessage.get({ id: data.event.id })
-                    if(!message.data) {
-                        setHistory([
-                            ...history,
-                            {
-                                id: 'error',
-                                question: data.event.question,
-                                answer:
-                                    "Error generating an answer. Please check your browser console, WAF configuration, Bedrock model access, and Lambda logs for debugging the error.",
-                                sessionId: 'error',
-                                createdAt: '',
-                                updatedAt: '',
-                                session: () => Promise.resolve({ id: 'error', data: null }),
-                            },
-                        ]);
+                    if(data.event.sessionId !== sessionIdRef.current) {
                         return
                     }
-                    message.data.answer = data.event.answer!
-                    await client.models.AgentMessage.update(message.data)
+                    setSpinner(false)
+                    setHistory((history) => {
+                        const message = history.find((msg) => msg.id === data.event.id)
+                        if(!message) {
+                            console.error('message not found in history:', history)
+                            return [
+                                ...history,
+                                {
+                                    id: 'error',
+                                    question: data.event.question,
+                                    answer:
+                                        "Error generating an answer. Please check your browser console, WAF configuration, Bedrock model access, and Lambda logs for debugging the error.",
+                                    sessionId: 'error',
+                                },
+                            ]
+                        }
+                        message.answer = data.event.answer
+                        return [...history]
+                    })
                 },
                 error: (err) => console.error('error', err),
             })
@@ -80,13 +76,7 @@ export default function App() {
 
         connectAndSubscribe().catch(err => console.error(err))
 
-        client.models.ChatSession.create({ id: sessionId })
-            .catch((err) => console.error(err))
-
-        setSubscription(sub)
-
         return () => {
-            sub.unsubscribe()
             channel && channel.close()
         }
     }, [])
@@ -95,15 +85,17 @@ export default function App() {
 
         const id = `message-${Date.now()}`
 
-        const { data, errors } = await client.models.AgentMessage.create({
+        const data: AgentMessage = {
             id,
             question: question,
             sessionId: sessionId,
             memoryId: memoryId,
-        })
+        }
+
+        const { errors } = await client.queries.invokeAgent(data)
 
         if (!errors) {
-            setMemoryId(data?.memoryId || null)
+            setMemoryId(memoryId || undefined)
             return data
         } else {
             console.log(errors)
@@ -134,9 +126,6 @@ export default function App() {
                         answer:
                             "Error generating an answer. Please check your browser console, WAF configuration, Bedrock model access, and Lambda logs for debugging the error.",
                         sessionId: 'error',
-                        createdAt: '',
-                        updatedAt: '',
-                        session: () => Promise.resolve({ id: 'error', data: null }),
                     },
                 ]);
             });
@@ -149,23 +138,8 @@ export default function App() {
     }
 
     const onClearHistory = () => {
-        const newSessionId = `session-${Date.now()}`
-        client.models.ChatSession.create({ id: newSessionId })
-            .then((result) => {
-                if(result.data) {
-                    setSessionId(result.data.id)
-                    setHistory([])
-                    subscription?.unsubscribe()
-                    const sub = client.models.AgentMessage.observeQuery().subscribe({
-                        next: ({ items }) => {
-                            const currentSessionMessages = items.filter((item) => item.sessionId === result.data?.id)
-                            setHistory([...currentSessionMessages])
-                        },
-                    })
-                    setSubscription(sub)
-                }
-            })
-            .catch((err) => console.error(err))
+        setSessionId(`session-${Date.now()}`)
+        setHistory([])
     }
 
     return (

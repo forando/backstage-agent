@@ -8,20 +8,17 @@ import {
 import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
 import Linkify from 'linkify-react'
-import { type Schema } from '#/amplify/data/resource'
-
-type AgentMessage = Schema['AgentMessage']['type']
+import { AgentMessage } from '#/amplify/functions/common/message.ts'
 
 export type ChatProps = {
     history: AgentMessage[];
 }
 
-const Chat = (props: ChatProps) => {
-    const history = props.history;
+const Chat = ({ history = [] }: ChatProps) => {
     //order history by id
     const orderedHistory = history.sort((a, b) => a.id.localeCompare(b.id))
 
-    const boxRef = useRef(null);
+    const boxRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (boxRef.current) {
@@ -43,7 +40,7 @@ const Chat = (props: ChatProps) => {
                 <Stack spacing={3}>
                     {/*sort history by id*/}
                     {orderedHistory?.map((msg) => (
-                        <Box sx={{ padding: "8px" }} key = {msg}>
+                        <Box sx={{ padding: "8px" }} key = {msg.id}>
                             <Box sx={{ paddingBottom: "8px" }}>
                                 <Card
                                     raised
@@ -66,7 +63,7 @@ const Chat = (props: ChatProps) => {
                                 >
                                     <CardContent>
                                         <Typography>
-                                            <Linkify properties={{ target: '_blank' }}>{msg.answer}</Linkify>
+                                            <Linkify>{msg.answer}</Linkify>
                                         </Typography>
                                         <Typography variant="caption">
                                             {msg.sessionId}
@@ -94,6 +91,5 @@ const Chat = (props: ChatProps) => {
 };
 
 Chat.propTypes = { history: PropTypes.array };
-Chat.defaultProps = { history: [] };
 
 export default Chat;

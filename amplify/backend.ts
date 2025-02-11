@@ -1,13 +1,9 @@
 import { Stack } from 'aws-cdk-lib'
 import { AuthorizationType } from 'aws-cdk-lib/aws-appsync'
 import { defineBackend } from '@aws-amplify/backend'
-import {
-    CfnApiKey,
-} from 'aws-cdk-lib/aws-appsync'
+import { CfnApiKey } from 'aws-cdk-lib/aws-appsync'
 import { auth } from './auth/resource'
-import {
-    data,
-} from './data/resource'
+import { data } from './data/resource'
 import { createAppSyncEventApi } from './events/resource'
 import {
   contentCreator,
@@ -24,27 +20,27 @@ import {
     configureAgentActionPerformerFn
 } from './functions/action-performer/resource'
 import {
-    cdc,
-    configureCDCFn,
-    configureEnvsForCDCFn
-} from './functions/cdc/resource'
+    agentInvoker,
+    configureInvokeAgentFn,
+    configureEnvsForInvokeAgentFn
+} from './functions/agent-invoker/resource'
 import { BedrockAI } from './bedrock/resource'
 
 const backend = defineBackend({
     auth,
     data,
-    cdc,
+    agentInvoker,
     contentCreator,
-    knowledgeBaseIngestionJob,
     agentActionPerformer,
+    knowledgeBaseIngestionJob,
 })
 
-const cdcFnResources = backend.cdc.resources
 const authResources = backend.auth.resources
 const dataResources = backend.data.resources
+const agentInvokerFnResources = backend.agentInvoker.resources
 const contentCreatorFnResources = backend.contentCreator.resources
-const knowledgeBaseIngestionJobFnResources = backend.knowledgeBaseIngestionJob.resources
 const agentActionPerformerFnResources = backend.agentActionPerformer.resources
+const knowledgeBaseIngestionJobFnResources = backend.knowledgeBaseIngestionJob.resources
 
 const dataStack = Stack.of(dataResources.graphqlApi)
 const functionsStack = Stack.of(contentCreatorFnResources.lambda)
@@ -52,8 +48,6 @@ const functionsStack = Stack.of(contentCreatorFnResources.lambda)
 const bedrock = new BedrockAI(functionsStack, 'bedrock', {
     actionPerformerFn: agentActionPerformerFnResources.lambda,
 })
-
-dataResources.tables['AgentMessage'].grantReadWriteData(cdcFnResources.lambda)
 
 const api = createAppSyncEventApi(
     dataStack,
@@ -67,17 +61,16 @@ const apiKey = new CfnApiKey(dataStack, 'AppSyncApiKey', {
     description: 'API key for AppSync Event API',
 })
 
-configureCDCFn(
+configureInvokeAgentFn(
     dataStack,
-    cdcFnResources,
+    agentInvokerFnResources,
     bedrock.agent.agentArn,
     bedrock.agent.agentId,
     api.attrApiArn,
-    dataResources.tables['AgentMessage'].tableStreamArn,
 )
 
-configureEnvsForCDCFn(
-    cdcFnResources.cfnResources.cfnFunction,
+configureEnvsForInvokeAgentFn(
+    agentInvokerFnResources.cfnResources.cfnFunction,
     bedrock.agent.agentId,
     bedrock.agentAliasId,
     `https://${api.getAtt('Dns.Http').toString()}/event`,

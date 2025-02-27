@@ -10,11 +10,6 @@ const config: Config = {
   coverageProvider: 'v8',
   reporters: ['default', ['jest-junit', { outputDirectory: './coverage' }]],
   coverageReporters: ['text', 'lcov', 'cobertura'],
-  moduleNameMapper: {
-    ...pathsToModuleNameMapper(tsconfig.compilerOptions.paths, {
-      prefix: '<rootDir>/',
-    }),
-  },
   preset: 'ts-jest',
   moduleFileExtensions: ['js', 'ts', 'd.ts', 'json'],
   roots: ['<rootDir>'],

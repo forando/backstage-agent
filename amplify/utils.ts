@@ -11,7 +11,11 @@ export const nameFor = (name: string): string => {
     const context = JSON.parse(contextStr)
     const backendType = context['amplify-backend-type']
     if(backendType === 'sandbox') {
-        const backendName = context['amplify-backend-name'].replace(/\./g, '');
+        const backendNameLimit = 14;
+        let backendName = context['amplify-backend-name'].replace(/\./g, '');
+        if(backendName.length > backendNameLimit) {
+            backendName = backendName.substring(0, backendNameLimit)
+        }
         return `sandbox-backstageagent-${backendName}-${name}`
     }
     return `backstageagent-${name}`

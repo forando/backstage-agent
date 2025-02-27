@@ -1,0 +1,30 @@
+{
+  "config":{
+    "indexing":"full",
+    "lang":["en"],
+    "min_search_length":3,
+    "prebuild_index":false,
+    "separator":"[\\s\\-]+"},
+  "docs":[
+    {
+      "location":"",
+      "text":"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce et accumsan justo. Aliquam vel elit dapibus, euismod nunc vitae, accumsan lorem. Suspendisse ut metus nulla. Donec vitae efficitur felis.",
+      "title":"Main Title"
+    },
+    {
+      "location":"#sub-title1",
+      "text":"Aliquam non ex eget libero pharetra egestas sit amet at purus. Nullam ullamcorper mauris dolor, ut placerat arcu malesuada id. Nam nisl neque, pretium ut aliquet ut, vestibulum ac turpis. Aliquam sed dictum urna. Donec id turpis posuere, pulvinar nisl id, porta leo.",
+      "title":"Sub Title 1"
+    },
+    {
+      "location":"#sub-title2",
+      "text":"Vestibulum mollis lacus dolor, nec hendrerit nisl molestie in. Donec fermentum tellus quis sem consectetur, ac blandit risus pretium. Duis in felis dictum, cursus erat in, aliquam est.",
+      "title":"Sub Title 2"
+    },
+    {
+      "location":"#sub-title3",
+      "text":"Donec maximus malesuada augue, in iaculis tellus pretium ac. Vestibulum justo velit, pulvinar sit amet convallis at, elementum rutrum odio. Donec sed velit semper, molestie nunc eget, facilisis nibh. Nulla est nibh, venenatis eu pulvinar vitae, malesuada sit amet nunc.",
+      "title":"Sub Title 3"
+    }
+  ]
+}

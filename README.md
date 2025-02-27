@@ -19,14 +19,6 @@ The resulted document is stored in `Bedrock S3 bucket`.
     - The found documents and the query are piped through `anthropic.claude-3-5-sonnet-20240620-v1:0` to get an answer.
     - The `Bedrock Agent` has a set of preconfigured actions that it can perform by invoking __Action Performer__ lambda function. For example, it can check that Backstage links are not broken before returning them to the user.
 
-__Question:__ why to assemble all chunks from `search_index.json` together?
-
-__Answer:__ this allows to store the document in the OpenSearch as a single entity. When a request comes in, OpenSearch 
-returns the whole document and not only parts of it. We then pipe entire document through `anthropic.claude-3-5-sonnet-20240620-v1:0` 
-model as a context that is used for the answer. This is useful when the user asks a question that spans multiple subheadings.
-
-`note:` Bedrock actually also splits the document into chunks, but it is configured to be much larger than the original subheadings.
-
 ## Installation
 
 ### Pre-requisites
@@ -38,5 +30,5 @@ The backend is built with CDK using Amplify.
 To deploy a sandboxed version of the agent, execute from the root:
 
 ```bash
-SOURCE_BUCKET_NAME=<your_s3_bucket_name> npx ampx sandbox
+SOURCE_BUCKET_NAME=<your_s3_bucket_name> BACKSTAGE_URL=<your_backstage.url> npx ampx sandbox
 ```

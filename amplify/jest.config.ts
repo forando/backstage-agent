@@ -17,6 +17,7 @@ const config: Config = {
   transform: {
     '^.+\\.ts?$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
   },
+  setupFiles: ['<rootDir>/functions/common/setupEnv.ts']
 };
 
 export default config;

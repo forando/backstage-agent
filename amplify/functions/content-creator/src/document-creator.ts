@@ -10,10 +10,8 @@ export type SearchIndex = {
 
 /**
  * The base url of the backstage instance.
- * Replace this with your company backstage url.
- * TODO: This should be configurable.
  */
-const baseUrl = "https://backstage-stg.idealo.tools/docs"
+const baseUrl = `${process.env.BACKSTAGE_URL}/docs`
 
 /**
  * Creates a document from the search index.

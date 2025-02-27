@@ -1,0 +1,1 @@
+process.env.BACKSTAGE_URL = 'https://backstage.example.com';

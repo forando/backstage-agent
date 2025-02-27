@@ -7,11 +7,18 @@ import {IBucket} from 'aws-cdk-lib/aws-s3'
 
 const FUNCTION_NAME = 'contentCreator'
 
+if(!process.env.BACKSTAGE_URL) {
+  throw new Error('BACKSTAGE_URL env not defined')
+}
+
 export const contentCreator = defineFunction({
   name: FUNCTION_NAME,
   entry: './src/handler.ts',
   runtime: 20,
   timeoutSeconds: 360,
+  environment: {
+    BACKSTAGE_URL: process.env.BACKSTAGE_URL
+  }
 })
 
 const sourceBucketName  = process.env.SOURCE_BUCKET_NAME

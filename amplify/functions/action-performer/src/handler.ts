@@ -92,8 +92,11 @@ const checkBackstageLinkIsValid = (event: AgentActionEvent): AgentActionResponse
         return buildResponse(event, { error: 'No link provided' })
     }
 
-    const baseUrl = "https://backstage-stg.idealo.tools/docs"
+    const baseUrl = `${process.env.BACKSTAGE_URL}/docs`
 
+    /*
+     * TODO: Implement a more robust check to see if the link is valid
+     */
     return link.startsWith(baseUrl) ? buildResponse(event, { valid: true }) : buildResponse(event, { valid: false })
 }
 
@@ -103,6 +106,9 @@ const createGitHubApp = (event: AgentActionEvent): AgentActionResponse => {
     if(!teamName) {
         return buildResponse(event, { error: 'No teamName provided' })
     }
+    /*
+     * TODO: Perform the necessary steps to create a GitHub App
+     */
     return buildResponse(event, { teamName, requestId: Date.now() })
 }
 

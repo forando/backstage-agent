@@ -1,0 +1,11 @@
+{
+  "inputs": [
+    {
+      "content": {
+        "document": "how mush is 1+1"
+      },
+      "nodeName": "FlowInput",
+      "nodeOutputName": "document"
+    }
+  ]
+}

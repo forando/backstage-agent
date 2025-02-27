@@ -6,46 +6,33 @@ import { Effect, Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam'
 import { FunctionResources } from '@aws-amplify/plugin-types/lib/function_resources'
 import { nameFor } from '../../utils'
 
-const FUNCTION_NAME = 'agentInvoker'
+const FUNCTION_NAME = 'flowInvoker'
 
-export const agentInvoker = defineFunction({
+export const flowInvoker = defineFunction({
     name: FUNCTION_NAME,
     entry: "./src/handler.ts",
     timeoutSeconds: 60,
     resourceGroupName: 'data'
 })
 
-export const configureInvokeAgentFn = (
+export const configureFlowInvokerFn = (
     stack: Stack,
     resources: FunctionResources,
-    backstageAgentArn: string,
-    backstageAgentId: string,
-    githubAgentArn: string,
-    githubAgentId: string,
+    flowArn: string,
+    flowAliasArn: string,
     eventApiArn: string,
 ) => {
     resources.cfnResources.cfnFunction.functionName = nameFor(FUNCTION_NAME)
 
-    const bedrockModelAccess = new PolicyStatement({
+    const bedrockFlowAccess = new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ["bedrock:InvokeModel"],
-        resources: [BedrockFoundationModel.ANTHROPIC_CLAUDE_3_5_SONNET_V1_0.modelArn],
+        actions: ["bedrock:InvokeFlow"],
+        resources: [flowArn, flowAliasArn],
     })
 
-    const bedrockAgentAccess = new PolicyStatement({
+    const flowAliasListAccess = new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ["bedrock:InvokeAgent"],
-        resources: [
-            backstageAgentArn,
-            githubAgentArn,
-            `arn:aws:bedrock:eu-central-1:${stack.account}:agent-alias/${backstageAgentId}/*`,
-            `arn:aws:bedrock:eu-central-1:${stack.account}:agent-alias/${githubAgentId}/*`,
-        ],
-    })
-
-    const agentAliasListAccess = new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['bedrock:ListAgentAliases'],
+        actions: ['bedrock:ListFlowAliases'],
         resources: ['*']
     })
 
@@ -61,28 +48,23 @@ export const configureInvokeAgentFn = (
         ],
     })
 
-    const policy: Policy = new Policy(stack, 'AgentInvoker', {
+    const policy: Policy = new Policy(stack, 'FlowInvoker', {
         statements: [
-            bedrockModelAccess,
-            bedrockAgentAccess,
-            agentAliasListAccess,
+            bedrockFlowAccess,
+            flowAliasListAccess,
             eventApiAccess
         ],
     })
     resources.lambda.role?.attachInlinePolicy(policy)
 }
 
-export const configureEnvsForInvokeAgentFn = (
+export const configureEnvsForFlowInvokerFn = (
     lambda: CfnFunction,
-    agentId: string,
-    agentAliasId: string,
     flowId: string,
     flowAliasId: string,
     eventApiEndpoint: string,
     apiKey: string,
 ) => {
-    lambda.addPropertyOverride('Environment.Variables.AGENT_ID', agentId)
-    lambda.addPropertyOverride('Environment.Variables.AGENT_ALIAS_ID', agentAliasId)
     lambda.addPropertyOverride('Environment.Variables.FLOW_ID', flowId)
     lambda.addPropertyOverride('Environment.Variables.FLOW_ALIAS_ID', flowAliasId)
     lambda.addPropertyOverride('Environment.Variables.EVENT_API_ENDPOINT', eventApiEndpoint)

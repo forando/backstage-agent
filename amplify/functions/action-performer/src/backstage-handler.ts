@@ -1,76 +1,9 @@
 import { Handler } from 'aws-lambda'
-import {Logger} from '@aws-lambda-powertools/logger'
+import { Logger } from '@aws-lambda-powertools/logger'
+import { AgentActionEvent, AgentActionResponse } from '$backend/functions/action-performer/src/agent-action'
 
 process.env.POWERTOOLS_LOGGER_LOG_EVENT = 'true'
-const logger = new Logger({ serviceName: 'agentActionPerformer' })
-
-/**
- * @see https://docs.aws.amazon.com/bedrock/latest/userguide/agents-lambda.html#agents-lambda-input
- */
-export interface AgentActionEvent {
-    messageVersion: string,
-    agent: {
-        name: string,
-        id: string,
-        alias: string,
-        version: string
-    },
-    inputText: string,
-    sessionId: string,
-    actionGroup: string,
-    function: string,
-    parameters: [
-        {
-            name: string,
-            type: string,
-            value: string
-        }
-    ],
-    sessionAttributes: {
-        [key: string]: string
-    }
-    promptSessionAttributes: {
-        [key: string]: string
-    }
-}
-
-/**
- * @see https://docs.aws.amazon.com/bedrock/latest/userguide/agents-lambda.html#agents-lambda-input
- */
-export interface AgentActionResponse {
-    messageVersion: string,
-    response: {
-        actionGroup: string,
-        function: string,
-        functionResponse: {
-            responseState?: "FAILURE | REPROMPT",
-            responseBody: {
-                TEXT: {
-                    body: string //JSON-formatted string
-                }
-            }
-        }
-    },
-    sessionAttributes: {
-        [key: string]: string
-    },
-    promptSessionAttributes: {
-        [key: string]: string
-    },
-    knowledgeBasesConfiguration?: [
-        {
-            knowledgeBaseId: string,
-            retrievalConfiguration: {
-                vectorSearchConfiguration: {
-                    numberOfResults: number,
-                    filter: {
-                        RetrievalFilter: any
-                    }
-                }
-            }
-        }
-    ]
-}
+const logger = new Logger({ serviceName: 'backstageAgentActionPerformer' })
 
 export const handler: Handler = async (event: AgentActionEvent): Promise<AgentActionResponse> => {
     logger.logEventIfEnabled(event)

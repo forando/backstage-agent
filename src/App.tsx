@@ -18,8 +18,12 @@ import LoadingSpinner from './Spinner'
 import { events, type EventsChannel } from 'aws-amplify/data'
 import { AgentMessage } from '#/amplify/functions/common/message.ts'
 
+type FlowMessage = AgentMessage & {
+    executionId?: string
+}
+
 type AppSyncEvent = {
-    event: AgentMessage
+    event: FlowMessage
 }
 
 const client = generateClient<Schema>({authMode: 'userPool'})
@@ -30,6 +34,7 @@ export default function App() {
     const [question, setQuestion] = useState('')
     const [spinner, setSpinner] = useState(false)
     const [sessionId, setSessionId] = useState(`session-${Date.now()}`)
+    // const [executionId, setExecutionId] = useState<string | undefined>(undefined)
     const sessionIdRef = useRef(sessionId)
     const [memoryId, setMemoryId] = useState<string | undefined>(undefined)
 
@@ -51,6 +56,7 @@ export default function App() {
                         return
                     }
                     setSpinner(false)
+                    // setExecutionId(data.event.executionId || 'dummy')
                     setHistory((history) => {
                         const message = history.find((msg) => msg.id === data.event.id)
                         if(!message) {
@@ -66,6 +72,7 @@ export default function App() {
                                 },
                             ]
                         }
+                        // message.answer = data.event.question || data.event.answer
                         message.answer = data.event.answer
                         return [...history]
                     })
@@ -81,15 +88,97 @@ export default function App() {
         }
     }, [])
 
+    /*const sendPrompt = async () => {
+
+        const { data, errors } = await client.queries.invokeClassifierPrompt(
+            { question: JSON.stringify(
+                    {
+                        promptVariables: [{
+                            name: "input",
+                            value: question
+                        }]
+                    }
+                )
+            }
+        )
+
+        if (!errors) {
+            setMemoryId(memoryId || undefined)
+            return data
+        } else {
+            console.log(errors)
+            throw new Error("cannot generate response")
+        }
+    };
+
+    const handleSendQuestion = () => {
+        setSpinner(true);
+
+        sendPrompt()
+            .then((response) => {
+                setSpinner(false);
+                if(response) {
+                    setHistory([
+                        {
+                            id: `message-${Date.now()}`,
+                            question,
+                            answer: response,
+                            sessionId
+                        },
+                    ])
+                    setQuestion('')
+                }
+            })
+            .catch((_: any) => {
+                setSpinner(false);
+                setHistory([
+                    ...history,
+                    {
+                        id: 'error',
+                        question: question,
+                        answer:
+                            "Error generating an answer. Please check your browser console, WAF configuration, Bedrock model access, and Lambda logs for debugging the error.",
+                        sessionId: 'error',
+                    },
+                ])
+            })
+    }*/
+
     const sendPrompt = async () => {
 
         const id = `message-${Date.now()}`
 
-        const data: AgentMessage = {
+        /*let agentQuestion: any
+
+        if(executionId) {
+            agentQuestion = [
+                {
+                    nodeName: 'BackstageAgent',
+                    nodeInputName: 'agentInputText',
+                    content: {
+                        document: question
+                    }
+                }
+            ]
+        } else {
+            agentQuestion = [
+                {
+                    nodeName: 'FlowInput',
+                    nodeOutputName: 'document',
+                    content: {
+                        document: question
+                    }
+                }
+            ]
+        }*/
+
+        const data: FlowMessage = {
             id,
-            question: question,
-            sessionId: sessionId,
-            memoryId: memoryId,
+            // question: JSON.stringify(agentQuestion),
+            question,
+            sessionId,
+            // executionId,
+            memoryId,
         }
 
         const { errors } = await client.queries.invokeAgent(data)
@@ -111,7 +200,10 @@ export default function App() {
                 if(response) {
                     setHistory([
                         ...history,
-                        response,
+                        {
+                            ...response,
+                            question
+                        },
                     ])
                     setQuestion('')
                 }
@@ -139,6 +231,7 @@ export default function App() {
 
     const onClearHistory = () => {
         setSessionId(`session-${Date.now()}`)
+        // setExecutionId(undefined)
         setHistory([])
     }
 

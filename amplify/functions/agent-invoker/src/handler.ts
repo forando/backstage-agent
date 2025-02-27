@@ -30,6 +30,14 @@ export const handler: Schema["invokeAgent"]["functionHandler"] = async (event: a
         throw new Error('AGENT_ALIAS_ID environment variable is not set')
     }
 
+    if(!process.env.FLOW_ID) {
+        throw new Error('FLOW_ID environment variable is not set')
+    }
+
+    if(!process.env.FLOW_ALIAS_ID) {
+        throw new Error('FLOW_ALIAS_ID environment variable is not set')
+    }
+
     if(!process.env.EVENT_API_ENDPOINT) {
         throw new Error('EVENT_API_ENDPOINT environment variable is not set')
     }
@@ -65,9 +73,7 @@ export const handler: Schema["invokeAgent"]["functionHandler"] = async (event: a
             logger.error('No completion found in response')
             return
         }
-
         const answer = await streamToString(response.completion)
-
         const message: AgentMessage = {
             id: event.arguments.id,
             question: event.arguments.question,
@@ -97,7 +103,7 @@ const streamToString = async (stream: AsyncIterable<ResponseStream>): Promise<st
     return result;
 }
 
-const send = async (message: AgentMessage) => {
+const send = async (message: any) => {
     const channel = await events.connect('default/channel')
     await events.post('default/channel', message)
     channel.close()
